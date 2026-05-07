@@ -16,6 +16,20 @@
             "reauth_confirm": {
                 "title": "API Reauthentication",
                 "description": "Your account is unable to authenticate. Click Submit to reauthenticate."
+            },
+            "vehicle": {
+                "title": "Select Vehicle",
+                "description": "Multiple vehicles were found on your account. Select the one to configure.",
+                "data": {
+                    "vin": "Vehicle"
+                }
+            },
+            "manual_vin": {
+                "title": "Enter Vehicle VIN",
+                "description": "Vehicle list could not be fetched automatically. Enter your VIN manually.",
+                "data": {
+                    "vin": "VIN"
+                }
             }
         },
         "abort": {
