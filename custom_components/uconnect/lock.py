@@ -54,7 +54,6 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    # Do not add entities if not configured
     if not config_entry.options.get(CONF_ADD_COMMAND_ENTITIES):
         return
 
@@ -93,6 +92,7 @@ class UconnectLock(LockEntity, UconnectEntity):
         self._attr_name = (
             f"{vehicle.make} {vehicle.nickname or vehicle.model} {description.name}"
         )
+        self._assumed_locked: bool | None = None
 
     @property
     def icon(self):
@@ -104,13 +104,25 @@ class UconnectLock(LockEntity, UconnectEntity):
 
     @property
     def is_locked(self):
-        return self.entity_description.is_locked(self.vehicle)
+        # Prefer real state from API if available
+        real_state = self.entity_description.is_locked(self.vehicle)
+        if real_state is not None:
+            return real_state
+        # Fall back to optimistic assumed state
+        return self._assumed_locked
+
+    @property
+    def assumed_state(self) -> bool:
+        """Return True if state is assumed (no real API feedback)."""
+        return self.entity_description.is_locked(self.vehicle) is None
 
     async def async_lock(self, **kwargs):
         try:
             await self.coordinator.async_command(
                 self.vehicle.vin, self.entity_description.command_on
             )
+            self._assumed_locked = True
+            self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to lock %s: %s", self.vehicle.vin, err)
             raise HomeAssistantError(f"Failed to lock: {err}") from err
@@ -120,6 +132,8 @@ class UconnectLock(LockEntity, UconnectEntity):
             await self.coordinator.async_command(
                 self.vehicle.vin, self.entity_description.command_off
             )
+            self._assumed_locked = False
+            self.async_write_ha_state()
         except Exception as err:
             _LOGGER.error("Failed to unlock %s: %s", self.vehicle.vin, err)
             raise HomeAssistantError(f"Failed to unlock: {err}") from err
